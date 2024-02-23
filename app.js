@@ -2,15 +2,33 @@ const express = require('express');
 const path = require('path');
 require('./utils/dbConnect');
 const UserData = require('./utils/dbLogic');
+const session = require('express-session');
 
 // Inisiasi port
 const app = express();
 const port = 3000;
 
+// Session-Express
+app.use(
+	session({
+		secret: 'highSecret',
+		resave: false,
+		saveUninitialized: true,
+	}),
+);
+
 // Ejs View Engine
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 
+// Halaman Home
+app.get('/home', (req, res) => {
+	if (!req.session.user) {
+		// Jika pengguna tidak masuk, arahkan kembali ke halaman login
+		return res.redirect('/');
+	}
+	res.render('home');
+});
 // Halaman Login
 app.get('/', (req, res) => {
 	res.render('login');
@@ -31,16 +49,18 @@ app.post('/login', async (req, res) => {
 	if (req.body.password != validationUser.password) {
 		return res.redirect('/');
 	}
-	res.send('Berhasil Masuk');
+	req.session.user = validationUser;
+	res.redirect('/home');
 });
 
 // Menangani Form Daftar
 app.post('/register', async (req, res) => {
-	await UserData.insertMany({
+	let validationUser = await UserData.insertMany({
 		userName: req.body.username,
 		password: req.body.password,
 	});
-	res.redirect('/daftar');
+	req.session.user = validationUser;
+	res.redirect('/home');
 });
 
 // Penanganan Rute Ridak ditemukan
